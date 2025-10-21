@@ -1,0 +1,122 @@
+// How does a build.zig file work
+
+// const std = @import("std"); --> Zig standard library import
+//      - it allows us to use std.Build that contains API to define target, executables, libraries, options.
+
+// pub fn build(b: *std.Build) void { --> entry point function of build system.
+//      - when we execute zig build from terminal Zig search and call this function.
+//      - b is a parameter that represents a pointer to the (compilation process) std.Build
+
+//  const target = b.standardTargetOptions(.{});  --> allows us to specify the platform for which we want to compile (e.g, x86, ARM, etc)
+//                                                    standard is the current system?
+//  const optimize = b.standardOptimizeOption(.{}); --> defines the optimization level (configurable from terminal)
+
+//  const exe = b.addExecutable --> defines the main executable
+//      .name = ?
+//      .root_source_file = zig main from which the program starts.
+//      .target and .optimize have been defined earlier.
+//          b.path("src/main.zig") --> path from the build's root
+
+//   exe.addIncludePath(b.path("deps/CMSIS-NN/Include"));
+//   exe.addIncludePath(b.path("deps/CMSIS-DSP/Include/"));
+//   tell the compiler where to search for header.h files.
+
+//   exe.addCSourceFile --> add a source C file to be compile together with Zig code
+//          .file --> percpath of the file .c
+//          .flag --> options to be passed to the compiler
+
+//   exe.linkLibC(); --> tells the system Build that this executable must be linked to libc (C standard library) since the C file uses it.
+//   b.installArtifact(exe); --> installs the executable and copies it in .zig-out/bin/ as default
+
+//   b.addRunArtifact(exe) --> create an action to execute the executable after it has been compiled
+//   b.step() --> // I don't understand it
+
+// So the Idea is that build.zig builds a zig program. In this case the program will contain C code (CMSIS-NN):
+//          - it specifies where the header are located
+//          - then compiles
+//          - then run
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
+const std = @import("std"); //Standard Zig library import
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    // main executable
+    const exe = b.addExecutable(.{
+        .name = "zig-cmsis-nn-demo",
+        .root_source_file = b.path("src/main.zig"), // why not using b.path("src/main.zig")
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // path to CMSIS header
+    exe.addIncludePath(b.path("deps/CMSIS-NN/Include"));
+    exe.addIncludePath(b.path("deps/CMSIS-DSP/Include/"));
+
+    // CMSIS-NN Convolution source code
+    exe.addCSourceFile(.{
+        .file = b.path("deps/CMSIS-NN/Source/ConvolutionFunctions/arm_convolve_s8.c"),
+        .flags = &.{
+            "-std=c99",
+            "-DARM_MATH_DSP", // Capire se qua vanno messe le MACRO e quali
+            "-DARM_MATH_CM4",
+            "-Wall",
+        },
+    });
+
+    // link C
+    exe.linkLibC();
+
+    // Install binary = `zig build install`
+    b.installArtifact(exe);
+
+    const run_cmd = b.addRunArtifact(exe);
+    const run_cmd_step = b.step("run", "Build and run the demo");
+    run_cmd_step.dependOn(&run_cmd.step);
+
+    //const run_cmd = b.addRunArtifact(exe);
+    //run_cmd.step.dependOn(b.getInstallStep());
+    //if (b.args) |args| {
+    //    run_cmd.addArgs(args);
+    //}
+    //b.step("run", "Build and run the demo").dependOn(&run_cmd.step);
+}
