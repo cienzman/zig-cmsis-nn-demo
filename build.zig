@@ -74,7 +74,10 @@
 //
 //
 
-const std = @import("std"); //Standard Zig library import
+const std = @import("std");
+
+// Importa la configurazione locale
+const config = @import("local_config.zig");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{
@@ -86,55 +89,60 @@ pub fn build(b: *std.Build) void {
         },
     });
 
-    //const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // main executable
     const exe = b.addExecutable(.{
         .name = "zig-cmsis-nn-demo",
-        .root_source_file = b.path("src/main.zig"), // why not using b.path("src/main.zig")
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
-    // Importa la configurazione locale
-    const config = @import("local_config.zig");
+    // === CMSIS includes ===
+    exe.addIncludePath(b.path("deps/CMSIS-NN/Include"));
+    exe.addIncludePath(b.path("deps/CMSIS-DSP/Include"));
 
-    // Imposta ?
+    // === CMSIS C sources ===
+
+    const cmsis_flags = [_][]const u8{
+        "-std=c99",
+        "-DARM_MATH_DSP",
+        "-DARM_MATH_CM4",
+        "-Wall",
+    };
+
+    exe.addCSourceFile(.{
+        .file = b.path("deps/CMSIS-NN/Source/ConvolutionFunctions/arm_convolve_s8.c"),
+        .flags = &cmsis_flags,
+    });
+
+    exe.addCSourceFile(.{
+        .file = b.path("deps/CMSIS-NN/Source/NNSupportFunctions/arm_s8_to_s16_unordered_with_offset.c"),
+        .flags = &cmsis_flags,
+    });
+
+    exe.addCSourceFile(.{
+        .file = b.path("deps/CMSIS-NN/Source/ConvolutionFunctions/arm_nn_mat_mult_kernel_row_offset_s8_s16.c"),
+        .flags = &cmsis_flags,
+    });
+
+    exe.addCSourceFile(.{
+        .file = b.path("deps/CMSIS-NN/Source/ConvolutionFunctions/arm_nn_mat_mult_kernel_s8_s16.c"),
+        .flags = &cmsis_flags,
+    });
+
+    // === Toolchain include/library paths ===
     exe.addIncludePath(.{ .cwd_relative = config.arm_gnu_include });
     exe.addLibraryPath(.{ .cwd_relative = config.arm_gnu_lib });
     exe.addLibraryPath(.{ .cwd_relative = config.arm_gnu_lib_gcc });
-    exe.linkSystemLibrary("c");
 
-    // path to CMSIS header
-    exe.addIncludePath(b.path("deps/CMSIS-NN/Include"));
-    exe.addIncludePath(b.path("deps/CMSIS-DSP/Include/"));
+    // === Link standard libraries ===
+    //exe.linkLibC();
+    exe.linkSystemLibrary("m");
+    exe.linkSystemLibrary("gcc");
 
-    // CMSIS-NN Convolution source code
-    exe.addCSourceFile(.{
-        .file = b.path("deps/CMSIS-NN/Source/ConvolutionFunctions/arm_convolve_s8.c"),
-        .flags = &.{
-            "-std=c99",
-            "-DARM_MATH_DSP", // Capire se qua vanno messe le MACRO e quali
-            "-DARM_MATH_CM4",
-            "-Wall",
-        },
-    });
+    // === Force static linking (bare-metal target) ===
+    exe.linkage = .static;
 
-    // link C
-    exe.linkLibC();
-
-    // Install binary = `zig build install`
     b.installArtifact(exe);
-
-    const run_cmd = b.addRunArtifact(exe);
-    const run_cmd_step = b.step("run", "Build and run the demo");
-    run_cmd_step.dependOn(&run_cmd.step);
-
-    //const run_cmd = b.addRunArtifact(exe);
-    //run_cmd.step.dependOn(b.getInstallStep());
-    //if (b.args) |args| {
-    //    run_cmd.addArgs(args);
-    //}
-    //b.step("run", "Build and run the demo").dependOn(&run_cmd.step);
 }
