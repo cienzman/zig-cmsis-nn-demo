@@ -145,4 +145,8 @@ pub fn build(b: *std.Build) void {
     exe.linkage = .static;
 
     b.installArtifact(exe);
+
+    const run_cmd = b.addRunArtifact(exe);
+    const run_cmd_step = b.step("run", "Build and run the demo");
+    run_cmd_step.dependOn(&run_cmd.step);
 }
