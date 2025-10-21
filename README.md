@@ -1,1 +1,0 @@
-# zig-cmsis-nn-demo
