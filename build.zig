@@ -77,7 +77,16 @@
 const std = @import("std"); //Standard Zig library import
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = .{
+            .cpu_arch = .thumb,
+            .os_tag = .freestanding,
+            .abi = .eabihf,
+            .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m4 },
+        },
+    });
+
+    //const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
     // main executable
