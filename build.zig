@@ -97,6 +97,15 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // Importa la configurazione locale
+    const config = @import("local_config.zig");
+
+    // Imposta ?
+    exe.addIncludePath(.{ .cwd_relative = config.arm_gnu_include });
+    exe.addLibraryPath(.{ .cwd_relative = config.arm_gnu_lib });
+    exe.addLibraryPath(.{ .cwd_relative = config.arm_gnu_lib_gcc });
+    exe.linkSystemLibrary("c");
+
     // path to CMSIS header
     exe.addIncludePath(b.path("deps/CMSIS-NN/Include"));
     exe.addIncludePath(b.path("deps/CMSIS-DSP/Include/"));
