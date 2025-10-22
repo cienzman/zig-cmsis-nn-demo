@@ -1,0 +1,66 @@
+SCRIPT: convert_to_cmsis.py
+PURPOSE: Convert weights and bias from ZANT format (NCHW) to CMSIS-NN format (NHWC), and save as a Zig file (or binary or whatelse)
+
+###########################################################
+# 1) PARSE COMMAND LINE ARGUMENTS --> Script called by CodeGen (or manually?)
+
+    --model_path --> path to the model's .onnx file
+    --output_dir --> destination directory 
+    --layer_filter --> layer to convert (conv)
+    --emit_format  --> "zig" (or "bin")
+
+###########################################################
+# 2) LOAD ONNX MODEL
+
+model = LOAD_ONNX_MODEL(model_path)
+
+IF model is invalid:
+    PRINT "Error: model is unreadable."
+    EXIT
+
+###########################################################
+# 3) IDENTIFY CONVOLUTION LAYERS
+
+FOR each node IN model.graph.nodes:
+    IF node.op_type == "Conv":
+        ADD node TO conv_layers_list
+
+
+###########################################################
+# 4) FOR EACH CONVOLUTION LAYER
+
+FOR each conv_node IN conv_layers_list:
+
+   
+    # a) Extract Weight and Bias Tensors
+    weight = FIND_WEIGHT(model, conv_node.input[1]) 
+
+    weights = CONVERT_ONNX_TENSOR_(weight) #convert to py array
+
+    # b) Verify Weight Format
+    expected_shape = [OutChannels, InChannels, Height, Width]
+    IF SHAPE(weights) != expected_shape:
+    PRINT "Warning: unexpected weight shape for layer", conv_node.name
+
+    # c) Layout Conversion
+    # CMSIS-NN expects [HWIO] 
+    converted_weights = TRANSPOSE(weights, axes=(2, 3, 1, 0))
+
+    # d) Create File Name and Zig Constant Name
+    zig_name = conv_node.name + "_weights"
+    zig_file = output_dir + "/" + zig_name + ".zig"
+
+  
+    # e) Emit Zig or Binary File
+    IF emit_format == "zig":
+        WRITE_ZIG_FILE(zig_file, zig_name, converted_weights)
+    ELSE IF emit_format == "bin":
+        WRITE_BINARY_FILE(zig_file, converted_weights)
+
+
+# 5. FINAL REPORT
+PRINT "Conversion complete."
+PRINT "Files generated in:", output_dir
+
+
+END SCRIPT
