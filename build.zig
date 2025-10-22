@@ -43,40 +43,10 @@
 //
 //
 //
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
 
 const std = @import("std");
 
-// Importa la configurazione locale
+// local path import
 const config = @import("local_config.zig");
 
 pub fn build(b: *std.Build) void {
